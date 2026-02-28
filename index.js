@@ -79,7 +79,11 @@ app.post("/api/contact", async (req, res) => {
     });
   }
 
-  const fromAddress = process.env.FROM_EMAIL || process.env.SMTP_USER;
+  // Gmail only allows sending from SMTP_USER; custom FROM_EMAIL can cause rejection
+  const fromAddress =
+    process.env.SMTP_USER?.includes("@gmail.com")
+      ? process.env.SMTP_USER
+      : (process.env.FROM_EMAIL || process.env.SMTP_USER);
 
   try {
     // Send both emails in parallel (faster than sequential)
@@ -133,9 +137,18 @@ ${message}
     });
   } catch (error) {
     console.error("Error sending contact emails:", error);
+    // Sanitized error for client; full error in server logs
+    let clientError = "Failed to send emails. Please try again later.";
+    if (error.code === "ETIMEDOUT" || error.code === "ESOCKETTIMEDOUT") {
+      clientError = "Request timed out. Please try again.";
+    } else if (error.code === "EAUTH" || error.responseCode === 535) {
+      clientError = "Email authentication failed. Check SMTP credentials in Vercel.";
+    } else if (error.message?.includes("OWNER_EMAIL") || error.message?.includes("SMTP")) {
+      clientError = "Server email config error. Add all env vars in Vercel.";
+    }
     res.status(500).json({
       success: false,
-      error: "Failed to send emails. Please try again later.",
+      error: clientError,
     });
   }
 });
