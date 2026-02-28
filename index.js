@@ -10,12 +10,9 @@ const PORT = process.env.PORT || 5000;
 
 app.use(express.json());
 
-// Allow requests from frontend (change CLIENT_ORIGIN in .env if needed)
-app.use(
-  cors({
-    origin: process.env.CLIENT_ORIGIN || "*",
-  })
-);
+// Allow requests from frontend (CLIENT_ORIGIN = your frontend URL, no trailing slash)
+const clientOrigin = (process.env.CLIENT_ORIGIN || "*").replace(/\/$/, "") || "*";
+app.use(cors({ origin: clientOrigin }));
 
 // Simple health check
 app.get("/", (_req, res) => {
