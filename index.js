@@ -10,9 +10,18 @@ const PORT = process.env.PORT || 5000;
 
 app.use(express.json());
 
-// Allow requests from frontend (CLIENT_ORIGIN = your frontend URL, no trailing slash)
-const clientOrigin = (process.env.CLIENT_ORIGIN || "*").replace(/\/$/, "") || "*";
-app.use(cors({ origin: clientOrigin }));
+// CORS: return exact request origin to avoid trailing-slash mismatch
+app.use(
+  cors({
+    origin: (origin, cb) => {
+      const allowed = (process.env.CLIENT_ORIGIN || "*").trim().replace(/\/+$/, "");
+      if (allowed === "*" || !origin) return cb(null, true);
+      const originNorm = (origin || "").replace(/\/+$/, "");
+      if (originNorm === allowed) return cb(null, origin); // exact match
+      return cb(null, false);
+    },
+  })
+);
 
 // Simple health check
 app.get("/", (_req, res) => {
